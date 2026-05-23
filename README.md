@@ -3,7 +3,7 @@
 
 Con tal de facilitar la configuración de los 4 servidores respectivos al proyecto final, hice este repositorio para que podamos compartir y editar nuestros script de shell. De esta forma, podamos trabajar con la configuración de cada servidor, y ver la configuración de los otros servidores, sin tener que configurarlos manualmente desde 0.
 
-En este repositorio todos seremos contribuidores estaremos como contribuidores, para poder hacer cambios sin problema.
+En este repositorio todos estaremos como contribuidores, para poder hacer cambios y operaciones como `git pull` o `git push`.
 
 > [!IMPORTANT]
 > Un script de Shell consiste en un archivo que contiene las líneas de comando que escribamos, las cuales se ejecutarán una por una, como si se escribiesen directamente en la terminal. Uno de sus principales usos es el de automatizar tareas y configuraciones.
