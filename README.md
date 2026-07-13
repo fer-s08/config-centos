@@ -20,5 +20,5 @@ Lo más ideal sería dividirnos cada uno la configuración de un servidor, y cre
 [VM de CentOS Stream 9](https://mega.nz/folder/28wQjJaD#2KBIHYjhvdW4J9L7YAK2EQ)
 
 ### Credenciales
-Usuario: pso1
-Contraseña: Servidores1_&&
+- Usuario: pso1
+- Contraseña: Servidores1_&&
