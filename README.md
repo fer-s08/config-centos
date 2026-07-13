@@ -16,5 +16,9 @@ Este es un repositorio sencillo que consta únicamente de 4 carpetas
 
 Lo más ideal sería dividirnos cada uno la configuración de un servidor, y crear su respecto script de shell. Igualmente debemos probar todos los servidores al final, antes de la presentación del proyecto.
 
-## Enlace para la VM base de CentOS
-[Enlace de MEGA para descargar los archivos mf, ovf, y vmdk](https://mega.nz/folder/28wQjJaD#2KBIHYjhvdW4J9L7YAK2EQ)
+### Enlace de descarga para la VM base de CentOS
+[VM de CentOS Stream 9](https://mega.nz/folder/28wQjJaD#2KBIHYjhvdW4J9L7YAK2EQ)
+
+### Credenciales
+Usuario: pso1
+Contraseña: Servidores1_&&
