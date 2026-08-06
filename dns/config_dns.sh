@@ -12,7 +12,8 @@ nmcli device show
 echo "Seleccion de la interfaz de red a configurar"
 
 interface=""
-while true; do
+flag=true
+while $flag; do
     echo "INTERFAZ DE RED"
     echo "1. ens160"
     echo "2. ens192"
@@ -22,11 +23,11 @@ while true; do
 
     case $opcion in
         1)
-            $interface=ens160
-            return
+            interface=ens160
+            flag=false
             ;;
-        2)  $interface=ens192
-            return
+        2)  interface=ens192
+            flag=false
             ;;
         0)
             echo "Cerrando script..."
@@ -42,10 +43,11 @@ done
 
 DIRECCION_IP=192.168.50.11
 GATEWAY=192.168.50.1
+SUBNET=192.168.50.0/24
 DOMINIO=centos.hn
 
 # Una vez seleccionada la interfaz de red, se aplican los comandos sobre esta, utilizando nmcli
-nmcli con mod $interface ipv4.method manual ipv4.addr "${DIRECCION_IP}/24" ipv4.gateway $GATEWAY ipv4.dns $DIRECCION_IP ipv4.dns-search "${DOMINIO}"
+nmcli con mod $interface ipv4.method manual ipv4.addr "$DIRECCION_IP/24" ipv4.gateway $GATEWAY ipv4.dns $DIRECCION_IP ipv4.dns-search "$DOMINIO"
 nmcli con down $interface; nmcli con up $interface
 
 # Configuracion del archivo named.conf
@@ -53,76 +55,112 @@ sudo sed -i 's\listen-on port 53 { 127.0.0.1; };\listen-on port 53 { 127.0.0.1; 
 sudo sed -i 's\listen-on-v6 port 53 { ::1; };\listen-on-v6 port 53 { none; };\' /etc/named.conf
 sudo sed -i 's\allow-query     { localhost; };\allow-query { localhost; 192.168.50.0/24; };\' /etc/named.conf
 
+# Validacion para comprobar si la configuracion de las zonas ya habia sido declarada en named.conf
 # Se agregan las zonas de busqueda directa e indirecta
-sudo tee -a /etc/named.conf > /dev/null <<EOT
-zone "centos.hn" IN {
-    type master;
-    file "/var/named/named.centos.hn";
-    allow-update { none; };
-};
+if grep -q -F "centos.hn" /etc/named.conf ; then
+    echo "La zona centos.hn ya fue configurada en este archivo"
+else 
+    sudo tee -a /etc/named.conf << 'EOF'
+        zone "centos.hn" IN {
+            type master;
+            file "/var/named/named.centos.hn";
+            allow-update { none; };
+        };
+EOF
+fi
 
-zone "50.168.192.in-addr.arpa" IN {
-    type master;
-    file "/var/named/named.50.168.192";
-    allow-update { none; };
-};
-EOT
+if grep -q -F "50.168.192.in-addr.arpa" /etc/named.conf ; then
+    echo "La zona 50.168.192 ya fue configurada en este archivo"
+else
+    sudo tee -a /etc/named.conf << 'EOF'
+        zone "50.168.192.in-addr.arpa" IN {
+            type master;
+            file "/var/named/named.50.168.192";
+            allow-update { none; };
+        };
+EOF
+fi
 
 echo "Comprobacion de la configuracion..."
 sudo named-checkzone
 
 # Configuracion de los archivos de zona
-sudo tee -a /var/named/named.centos.hn > /dev/null <<EOT
-$TTL 86400
-@   IN  SOA servidor.centos.hn. root.centos.hn. (
-    2026080402  ;Serial
-    3600    ;Refresh
-    1800    ;Retry
-    604800  ;Expire
-    86400   ;Minimum TTL
-)
-            IN  NS  servidor.centos.hn.
-servidor    IN  A   192.168.50.11
-router      IN  A   192.168.50.1
-server      IN  CNAME   servidor
-www         IN  CNAME   servidor
-correo      IN  A   192.168.50.11
-centos.hn   IN  MX 10   correo
-EOT
+# ======= Archivo de zona directa======
+if [ -e /var/named/named.centos.hn ]; then
+    echo "El archivo de zona directa ya fue creado"
+else
+    sudo tee /var/named/named.centos.hn << 'EOF'
+        $TTL 86400
+        @   IN  SOA servidor.centos.hn. root.centos.hn. (
+            2026080402  ;Serial
+            3600    ;Refresh
+            1800    ;Retry
+            604800  ;Expire
+            86400   ;Minimum TTL
+        )
+                    IN  NS  servidor.centos.hn.
+        servidor    IN  A   192.168.50.11
+        router      IN  A   192.68.50.1
+        server      IN  CNAME   servidor
+        www         IN  CNAME   servidor
+        correo      IN  A   192.168.50.11
+        centos.hn   IN  MX 10   correo
+EOF
+fi
 
-sudo tee -a /var/named/named.50.168.192 > /dev/null <<EOT
-$TTL 86400
-@   IN  SOA servidor.centos.hn. root.centos.hn. (
-    2026080401  ;Serial
-    3600    ;Refresh
-    1800    ;Retry
-    604800  ;Expire
-    86400   ;Minimum TTL
-)
-        IN  NS  servidor.centos.hn.
-11      IN  PTR servidor.centos.hn.
-50      IN  PTR router.centos.hn.
-11      IN  PTR correo.centos.hn.
-EOT
+# ===== Archivo de zona inversa =====
+if [ -e /var/named/named.50.168.192 ]; then
+    echo "El archivo de zona inversa ya existe"
+else
+    sudo tee /var/named/named.50.168.192 << 'EOF'
+        $TTL 86400
+        @   IN  SOA servidor.centos.hn. root.centos.hn. (
+            2026080401  ;Serial
+            3600    ;Refresh
+            1800    ;Retry
+            604800  ;Expire
+            86400   ;Minimum TTL
+        )
+                IN  NS  servidor.centos.hn.
+        11      IN  PTR servidor.centos.hn.
+        50      IN  PTR router.centos.hn.
+        11      IN  PTR correo.centos.hn.
+EOF
+fi
 
 # Configuracion de permisos
 sudo chown root:named /var/named/named.centos.hn /var/named/named.50.168.192
 sudo chroot 640 /var/named/named.centos.hn /var/named/named.50.168.192
 
 # Configuracion para aceptar unicamente conexiones IPV4
-echo "OPTIONS=-4" | sudo tee -a /etc/sysconfig/named > /dev/null
+echo "OPTIONS=-4" | sudo tee -a /etc/sysconfig/named
 
 # Configuracion de firewalld para permitir el servicio de DNS
 sudo firewall-cmd --add-service=dns
 
-# Listar los servicios agregados en el firewall
-sudo firewall-cmd --list-all
-sleep 2
+# Validacion para comprobar el estado del firewall
+FIREWALLD_STATUS=$(systemctl is-active firewalld)
 
-# Configuracion y habilitacion del servicio named
-sudo systemctl enable --now named
-systemctl status named
-sleep 2
+# Si el servicio ya esta activo, entonces solamente lo reinicia
+if [ "$FIREWALLD_STATUS" = "active"]; then
+    sudo systemctl restart firewalld
+# Si el servicio fallo, muestra un mensaje en pantalla
+elif [ "$FIREWALLD_STATUS" = "failed" ]; then
+    echo "Fallo al iniciar el servicio Firewalld"
+# En otro caso, se considera que el servicio esta deshabilitado pero no debido a un error
+# En este caso, se habilita y se inicia a la vez
+else
+    sudo systemctl enable --now firewalld
+fi
 
-echo "Se ha configurado el servicio de DNS correctamente!"
-exit 0
+NAMED_STATUS=$(systemctl is-active named)
+
+# De forma similar a firewalld, se realizan las mismas validaciones al servicio named
+if [ "$NAMED_STATUS" = "active" ]; then
+    sudo systemctl restart named
+elif [ "$NAMED_STATUS" = "failed "]; then
+    echo "Hubo un error al iniciar el servicio Named"
+    systemctl status named
+else 
+    systemctl enable --now named
+fi
