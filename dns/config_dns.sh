@@ -82,7 +82,7 @@ EOF
 fi
 
 echo "Comprobacion de la configuracion..."
-sudo named-checkzone
+sudo named-checkconf
 
 # Configuracion de los archivos de zona
 # ======= Archivo de zona directa======
@@ -90,21 +90,21 @@ if [ -e /var/named/named.centos.hn ]; then
     echo "El archivo de zona directa ya fue creado"
 else
     sudo tee /var/named/named.centos.hn << 'EOF'
-        $TTL 86400
-        @   IN  SOA servidor.centos.hn. root.centos.hn. (
-            2026080402  ;Serial
-            3600    ;Refresh
-            1800    ;Retry
-            604800  ;Expire
-            86400   ;Minimum TTL
-        )
-                    IN  NS  servidor.centos.hn.
-        servidor    IN  A   192.168.50.11
-        router      IN  A   192.68.50.1
-        server      IN  CNAME   servidor
-        www         IN  CNAME   servidor
-        correo      IN  A   192.168.50.11
-        centos.hn   IN  MX 10   correo
+$TTL 86400
+@   IN  SOA servidor.centos.hn. root.centos.hn. (
+2026080402  ;Serial
+3600    ;Refresh
+1800    ;Retry
+604800  ;Expire
+86400   ;Minimum TTL
+)
+            IN  NS  servidor.centos.hn.
+servidor    IN  A   192.168.50.11
+router      IN  A   192.68.50.1
+server      IN  CNAME   servidor
+www         IN  CNAME   servidor
+correo      IN  A   192.168.50.11
+centos.hn   IN  MX 10   correo
 EOF
 fi
 
@@ -113,24 +113,24 @@ if [ -e /var/named/named.50.168.192 ]; then
     echo "El archivo de zona inversa ya existe"
 else
     sudo tee /var/named/named.50.168.192 << 'EOF'
-        $TTL 86400
-        @   IN  SOA servidor.centos.hn. root.centos.hn. (
-            2026080401  ;Serial
-            3600    ;Refresh
-            1800    ;Retry
-            604800  ;Expire
-            86400   ;Minimum TTL
-        )
-                IN  NS  servidor.centos.hn.
-        11      IN  PTR servidor.centos.hn.
-        50      IN  PTR router.centos.hn.
-        11      IN  PTR correo.centos.hn.
+$TTL 86400
+@   IN  SOA servidor.centos.hn. root.centos.hn. (
+2026080401  ;Serial
+3600    ;Refresh
+1800    ;Retry
+604800  ;Expire
+86400   ;Minimum TTL
+)
+        IN  NS  servidor.centos.hn.
+11      IN  PTR servidor.centos.hn.
+50      IN  PTR router.centos.hn.
+11      IN  PTR correo.centos.hn.
 EOF
 fi
 
 # Configuracion de permisos
 sudo chown root:named /var/named/named.centos.hn /var/named/named.50.168.192
-sudo chroot 640 /var/named/named.centos.hn /var/named/named.50.168.192
+sudo chmod 640 /var/named/named.centos.hn /var/named/named.50.168.192
 
 # Configuracion para aceptar unicamente conexiones IPV4
 echo "OPTIONS=-4" | sudo tee -a /etc/sysconfig/named
@@ -142,7 +142,7 @@ sudo firewall-cmd --add-service=dns
 FIREWALLD_STATUS=$(systemctl is-active firewalld)
 
 # Si el servicio ya esta activo, entonces solamente lo reinicia
-if [ "$FIREWALLD_STATUS" = "active"]; then
+if [ "$FIREWALLD_STATUS" = "active" ]; then
     sudo systemctl restart firewalld
 # Si el servicio fallo, muestra un mensaje en pantalla
 elif [ "$FIREWALLD_STATUS" = "failed" ]; then
@@ -158,7 +158,7 @@ NAMED_STATUS=$(systemctl is-active named)
 # De forma similar a firewalld, se realizan las mismas validaciones al servicio named
 if [ "$NAMED_STATUS" = "active" ]; then
     sudo systemctl restart named
-elif [ "$NAMED_STATUS" = "failed "]; then
+elif [ "$NAMED_STATUS" = "failed" ]; then
     echo "Hubo un error al iniciar el servicio Named"
     systemctl status named
 else 
